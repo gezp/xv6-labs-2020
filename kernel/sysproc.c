@@ -95,3 +95,13 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+extern uint64 trace_mask;
+uint64
+sys_trace(void){
+  int n;
+  if (argint(0, &n) < 0) // 判断参数是否获取成功
+    return -1;
+  myproc()->trace_mask=n;
+  return 0;
+}

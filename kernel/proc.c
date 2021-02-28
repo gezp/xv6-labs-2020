@@ -276,7 +276,6 @@ fork(void)
   np->sz = p->sz;
 
   np->parent = p;
-
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -292,7 +291,7 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
-
+  np->trace_mask=p->trace_mask;
   np->state = RUNNABLE;
 
   release(&np->lock);
