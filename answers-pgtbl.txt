@@ -1,0 +1,2 @@
+1.略
+2.防止地址溢出，如果srcva+len溢出，变成低地址，将发生非法访问，例如srcva=p->size-1,len=2^32-srcva,则srcva+len=0。
