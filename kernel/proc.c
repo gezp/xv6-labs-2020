@@ -166,8 +166,9 @@ found:
   if(pa == 0)
     panic("kalloc");
   uint64 va = KSTACK((int) (p - proc));
-  mappages(p->kpagetable,va,PGSIZE, (uint64)pa,  PTE_R | PTE_W);
-  p->kstack = va;
+  mappages(p->kpagetable, va ,PGSIZE, (uint64)pa,  PTE_R | PTE_W);
+  p->kstack=va;
+  
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -320,7 +321,6 @@ growproc(int n)
     upgtbl2kpgtbl(p->pagetable,p->kpagetable,p->sz, p->sz+n);
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
-    panic("dddd");
   }
   p->sz = sz;
   return 0;
@@ -548,11 +548,13 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        //切换页表
         w_satp(MAKE_SATP(p->kpagetable));
         sfence_vma();
 
         swtch(&c->context, &p->context);
 
+        kvminithart();
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;

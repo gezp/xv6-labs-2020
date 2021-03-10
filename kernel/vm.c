@@ -407,40 +407,40 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 int
 copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {
-  uint64 n, va0, pa0;
-  int got_null = 0;
+  // uint64 n, va0, pa0;
+  // int got_null = 0;
 
-  while(got_null == 0 && max > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > max)
-      n = max;
+  // while(got_null == 0 && max > 0){
+  //   va0 = PGROUNDDOWN(srcva);
+  //   pa0 = walkaddr(pagetable, va0);
+  //   if(pa0 == 0)
+  //     return -1;
+  //   n = PGSIZE - (srcva - va0);
+  //   if(n > max)
+  //     n = max;
 
-    char *p = (char *) (pa0 + (srcva - va0));
-    while(n > 0){
-      if(*p == '\0'){
-        *dst = '\0';
-        got_null = 1;
-        break;
-      } else {
-        *dst = *p;
-      }
-      --n;
-      --max;
-      p++;
-      dst++;
-    }
+  //   char *p = (char *) (pa0 + (srcva - va0));
+  //   while(n > 0){
+  //     if(*p == '\0'){
+  //       *dst = '\0';
+  //       got_null = 1;
+  //       break;
+  //     } else {
+  //       *dst = *p;
+  //     }
+  //     --n;
+  //     --max;
+  //     p++;
+  //     dst++;
+  //   }
 
-    srcva = va0 + PGSIZE;
-  }
-  if(got_null){
-    return 0;
-  } else {
-    return -1;
-  }
+  //   srcva = va0 + PGSIZE;
+  // }
+  // if(got_null){
+  //   return 0;
+  // } else {
+  //   return -1;
+  // }
   return copyinstr_new(pagetable,dst,srcva,max);
 }
 
@@ -466,46 +466,24 @@ void vmprint(pagetable_t pagetable){
   vmprintwalk(pagetable,1);
 }
 
+
 void
-u2kvmcopy(pagetable_t pagetable, pagetable_t kpagetable, uint64 oldsz, uint64 newsz)
+upgtbl2kpgtbl(pagetable_t pagetable,pagetable_t kpagetable, uint64 oldsz, uint64 newsz)
 {
   pte_t *pte_from, *pte_to;
-  uint64 a, pa;
-  uint flags;
+  uint64 a;
 
   if (newsz < oldsz)
     return;
-  
+
   oldsz = PGROUNDUP(oldsz);
   for (a = oldsz; a < newsz; a += PGSIZE)
   {
     if ((pte_from = walk(pagetable, a, 0)) == 0)
-      panic("u2kvmcopy: pte should exist");
+      panic("upgtbl2kpgtbl: pte_from should exist");
     if ((pte_to = walk(kpagetable, a, 1)) == 0)
-      panic("u2kvmcopy: walk fails");
-    pa = PTE2PA(*pte_from);
+      panic("upgtbl2kpgtbl: pte_to walk fails");
     // 清除PTE_U的标记位
-    flags = (PTE_FLAGS(*pte_from) & (~PTE_U));
-    *pte_to = PA2PTE(pa) | flags;
-  }
-}
-
-void
-upgtbl2kpgtbl(pagetable_t pagetable,pagetable_t kpagetable, uint64 va_start, uint64 va_end)
-{
-  u2kvmcopy(pagetable,kpagetable, va_start,va_end);
-  return;
-  uint64 va;
-  pte_t *pte;
-  if(va_end < va_start)
-    return;
-  va_start = PGROUNDUP(va_start);
-  for(va = va_start; va < va_end; va += PGSIZE){
-    pte=walk(pagetable, va, 0);
-    if((*pte) & PTE_V){
-      mappages(kpagetable, va, PGSIZE, PTE2PA(*pte), PTE_FLAGS(*pte) & (~PTE_U));
-    }else{
-      panic("kpagetable ");
-    }
+    *pte_to = (*pte_from) & (~PTE_U);
   }
 }
