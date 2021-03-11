@@ -80,7 +80,6 @@ test1()
 {
   int i;
   int j;
-
   printf("test1 start\n");
   count = 0;
   j = 0;
@@ -88,6 +87,7 @@ test1()
   for(i = 0; i < 500000000; i++){
     if(count >= 10)
       break;
+    
     foo(i, &j);
   }
   if(count < 10){
