@@ -548,12 +548,13 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
-        //切换页表
+        //即将切换为进程内核线程，此时切换进程内核页表
         w_satp(MAKE_SATP(p->kpagetable));
         sfence_vma();
 
         swtch(&c->context, &p->context);
-
+        
+        //此时在全局内核线程
         kvminithart();
         // Process is done running for now.
         // It should have changed its p->state before coming back.
