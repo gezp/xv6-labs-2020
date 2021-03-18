@@ -126,12 +126,14 @@ sys_link(void)
     return -1;
 
   begin_op();
+
   if((ip = namei(old)) == 0){
     end_op();
     return -1;
   }
 
   ilock(ip);
+
   if(ip->type == T_DIR){
     iunlockput(ip);
     end_op();
@@ -193,6 +195,7 @@ sys_unlink(void)
     return -1;
 
   begin_op();
+
   if((dp = nameiparent(path, name)) == 0){
     end_op();
     return -1;
@@ -291,12 +294,14 @@ sys_open(void)
   struct file *f;
   struct inode *ip;
   int n;
+  int cnt=0;
 
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
   begin_op();
 
+begin:
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
@@ -310,6 +315,24 @@ sys_open(void)
     }
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+  }
+
+  if((ip->type==T_SYMLINK)&&((omode & O_NOFOLLOW) == 0)){
+    printf("[%s]->",path);
+    if((ip->size >0) && (readi(ip, 0, (uint64)path, 0, ip->size)==ip->size)){
+      printf("[%s]\n",path);
+      iunlockput(ip);
+      cnt++;
+      if(cnt>10){
+        end_op();
+        return -1;
+      }
+      goto begin;
+    }else{
       iunlockput(ip);
       end_op();
       return -1;
@@ -482,5 +505,66 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+static struct inode*
+createsymlink(char *target,char *path){
+  struct inode *ip, *dp;
+  char name[DIRSIZ];
+  if((dp = nameiparent(path, name)) == 0)
+    return 0;
+
+  ilock(dp);
+  if((ip = dirlookup(dp, name, 0)) != 0){
+    iunlockput(dp);
+    ilock(ip);
+    //如果已经存在，不做修改
+    if(ip->type == T_SYMLINK){
+      iunlockput(ip);
+      return 0;
+    }
+    iunlockput(ip);
+    return 0;
+  }
+
+  if((ip = ialloc(dp->dev, T_SYMLINK)) == 0)
+    panic("symlink: ialloc");
+
+  ilock(ip);
+  ip->major = 0;
+  ip->minor = 0;
+  ip->nlink = 1;
+  iupdate(ip);
+  //写入数据
+  if(writei(ip, 0, (uint64)target, 0, strlen(target)) != strlen(target))
+    panic("symlink: write data");
+  
+  //写入父目录
+  if(dirlink(dp, name, ip->inum) < 0)
+    panic("symlink: dirlink");
+
+  iunlockput(dp);
+  return ip;
+}
+
+uint64
+sys_symlink(void){
+  char target[MAXPATH];
+  char path[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0){
+    return -1;
+  }
+
+  begin_op();
+  if((ip = createsymlink(target,path)) == 0){
+    end_op();
+    return -1;
+  }
+
+  iunlockput(ip);
+  end_op();
   return 0;
 }
