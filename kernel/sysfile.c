@@ -322,9 +322,7 @@ begin:
   }
 
   if((ip->type==T_SYMLINK)&&((omode & O_NOFOLLOW) == 0)){
-    printf("[%s]->",path);
     if((ip->size >0) && (readi(ip, 0, (uint64)path, 0, ip->size)==ip->size)){
-      printf("[%s]\n",path);
       iunlockput(ip);
       cnt++;
       if(cnt>10){
